@@ -11,7 +11,7 @@ This ia a simple CLI based game insipired the local snake game 😉 on phones.
 1. **Clone the Repository**
    ```sh
    git clone https://github.com/Awungia112/snake_game.git
-   cd fibbot
+   cd snake_game
    ```
 2. **Build and run the Project**
    ```sh
