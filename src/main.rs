@@ -27,13 +27,9 @@ fn main() {
         if let Some(Button::Keyboard(key)) = event.press_args() {
             game.key_pressed(key); 
         }
-
-        // Update game state outside of the drawing closure
         event.update(|arg| {
             game.update(arg.dt);
         });
-
-        // Draw the game state
         window.draw_2d(&event, |c, g, _| {
             clear(BACK_COLOR, g);
             game.draw(&c, g);
