@@ -34,12 +34,14 @@ cd snake_game
 
    🛠️ Build the project:
 
-```cargo build --release
+```
+cargo build --release
 ```
 
    ▶️ Run the game:
 
-```cargo run
+```
+cargo run
 ```
 
 🕹️ How to Play
