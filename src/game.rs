@@ -1,10 +1,7 @@
-//use std::env::consts;
-//use std::thread::Thread;
+
 
 use piston_window::types::Color;
 use piston_window::*;
-
-//use rand::rngs::ThreadRng;
 use rand::{rng, Rng};
 
 use crate::draw::{draw_block, draw_rectangle};
