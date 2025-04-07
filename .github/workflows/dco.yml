@@ -1,4 +1,4 @@
-name: 🛡️ DCO Check
+name:  DCO Check
 
 on:
   push:
@@ -8,11 +8,11 @@ on:
 
 jobs:
   dco-check:
-    name: ✅ Verify DCO Sign-off
+    name:  Verify DCO Sign-off
     runs-on: ubuntu-latest
 
     steps:
-      - name: ⬇️ Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: 🔍 Get latest commit message
@@ -23,13 +23,13 @@ jobs:
           echo "$message" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: ✅ Check for Signed-off-by line
+      - name:  Check for Signed-off-by line
         run: |
           echo "🔍 Checking commit message:"
           echo "${{ steps.get_commit.outputs.commit_msg }}"
           if [[ "${{ steps.get_commit.outputs.commit_msg }}" != *"Signed-off-by:"* ]]; then
-            echo "❌ DCO sign-off missing!"
+            echo " DCO sign-off missing!"
             exit 1
           else
-            echo "✅ DCO sign-off present."
+            echo " DCO sign-off present."
           fi
