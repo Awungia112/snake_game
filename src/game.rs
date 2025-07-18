@@ -3,8 +3,9 @@
 use piston_window::types::Color;
 use piston_window::*;
 use rand::{rng, Rng};
+use piston_window::{Glyphs, Transformed};
 
-use crate::draw::{draw_block, draw_rectangle};
+use crate::draw::{draw_block, draw_rectangle, draw_circle, draw_grid};
 use crate::snake::{Direction, Snake};
 
 const FOOD_COLOR: Color = [0.00, 0.00, 0.00, 1.0];
@@ -26,6 +27,7 @@ pub struct Game {
 
     game_over: bool,
     waiting_time: f64,
+    pub score: u32,
 }
 
 impl Game {
@@ -39,6 +41,7 @@ impl Game {
             width,
             height,
             game_over: false,
+            score: 0,
         }
     }
 
@@ -63,20 +66,36 @@ impl Game {
         }
     }
 
-    pub fn draw(&self, con: &Context, g: &mut G2d) {
+    pub fn draw(&self, con: &Context, g: &mut G2d, glyphs: &mut Glyphs) {
+        // Draw animated background (simple color for now)
+        let grid_color: Color = [0.7, 0.7, 0.7, 0.2];
+        draw_grid(grid_color, self.width, self.height, con, g);
         self.snake.draw(con, g);
 
         if self.food_exists {
-            draw_block(FOOD_COLOR, self.food_x, self.food_y, con, g);
+            let food_color: Color = [1.0, 0.2, 0.2, 1.0];
+            draw_circle(food_color, self.food_x, self.food_y, con, g);
         }
 
         draw_rectangle(BORDER_COLOR, 0, 0, self.width, 1, con, g);
         draw_rectangle(BORDER_COLOR, 0, self.height - 1, self.width, 1, con, g);
         draw_rectangle(BORDER_COLOR, 0, 0, 1, self.height, con, g);
         draw_rectangle(BORDER_COLOR, self.width - 1, 0, 1, self.height, con, g);
-
+        // Draw score
+        let score_text = format!("Score: {}", self.score);
+        let transform = con.transform.trans(10.0, 30.0);
+        text([0.0, 0.0, 0.0, 1.0], 24, &score_text, glyphs, transform, g).ok();
         if self.game_over {
             draw_rectangle(GAMEOVER_COLOR, 0, 0, self.width, self.height, con, g);
+            let game_over_text = "Game Over!";
+            let restart_text = "Press R to Restart";
+            let instructions_text = "Arrows: Move | P: Pause | Esc: Quit";
+            let t1 = con.transform.trans(60.0, 200.0);
+            let t2 = con.transform.trans(60.0, 240.0);
+            let t3 = con.transform.trans(60.0, 280.0);
+            text([1.0, 1.0, 1.0, 1.0], 32, game_over_text, glyphs, t1, g).ok();
+            text([1.0, 1.0, 1.0, 1.0], 20, restart_text, glyphs, t2, g).ok();
+            text([1.0, 1.0, 1.0, 1.0], 16, instructions_text, glyphs, t3, g).ok();
         }
     }
 
@@ -104,6 +123,7 @@ impl Game {
         if self.food_exists && self.food_x == head_x && self.food_y == head_y {
             self.food_exists = false;
             self.snake.restore_tail();
+            self.score += 1;
         }
     }
 
@@ -147,5 +167,6 @@ impl Game {
         self.food_x = 6;
         self.food_y = 4;
         self.game_over = false;
+        self.score = 0;
     }
 }
