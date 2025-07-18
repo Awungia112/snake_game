@@ -58,41 +58,33 @@ impl Snake {
         let eye_color: Color = [1.0, 1.0, 1.0, 1.0];
         let mut iter = self.body.iter();
         if let Some(head) = iter.next() {
-            draw::draw_block(head_color, head.x, head.y, con, g);
-            // Draw eyes based on direction
-            let (eye_offset_x, eye_offset_y) = match self.direction {
-                Direction::Up => (0.15, 0.2),
-                Direction::Down => (0.15, 0.6),
-                Direction::Left => (0.2, 0.15),
-                Direction::Right => (0.6, 0.15),
-            };
+            // Draw head as a rounded rectangle (ellipse for more distinction)
             let block_size = 25.0;
             let base_x = draw::to_coord(head.x);
             let base_y = draw::to_coord(head.y);
-            // Left eye
-            draw::draw_circle(eye_color,
-                head.x,
-                head.y,
-                con,
-                g,
-            );
-            // Right eye (offset)
-            // For simplicity, draw two small circles with offset
-            let eye_radius = block_size * 0.12;
-            let left_eye = [
-                base_x + block_size * eye_offset_x,
-                base_y + block_size * eye_offset_y,
-                eye_radius,
-                eye_radius
-            ];
-            let right_eye = [
-                base_x + block_size * (eye_offset_x + 0.4),
-                base_y + block_size * eye_offset_y,
-                eye_radius,
-                eye_radius
-            ];
-            piston_window::ellipse(eye_color, left_eye, con.transform, g);
-            piston_window::ellipse(eye_color, right_eye, con.transform, g);
+            let head_rect = [base_x, base_y, block_size, block_size];
+            piston_window::ellipse(head_color, head_rect, con.transform, g);
+            // Draw eyes based on direction
+            let (eye1, eye2) = match self.direction {
+                Direction::Up => (
+                    [base_x + block_size * 0.25, base_y + block_size * 0.15, block_size * 0.15, block_size * 0.15],
+                    [base_x + block_size * 0.60, base_y + block_size * 0.15, block_size * 0.15, block_size * 0.15],
+                ),
+                Direction::Down => (
+                    [base_x + block_size * 0.25, base_y + block_size * 0.70, block_size * 0.15, block_size * 0.15],
+                    [base_x + block_size * 0.60, base_y + block_size * 0.70, block_size * 0.15, block_size * 0.15],
+                ),
+                Direction::Left => (
+                    [base_x + block_size * 0.10, base_y + block_size * 0.25, block_size * 0.15, block_size * 0.15],
+                    [base_x + block_size * 0.10, base_y + block_size * 0.60, block_size * 0.15, block_size * 0.15],
+                ),
+                Direction::Right => (
+                    [base_x + block_size * 0.75, base_y + block_size * 0.25, block_size * 0.15, block_size * 0.15],
+                    [base_x + block_size * 0.75, base_y + block_size * 0.60, block_size * 0.15, block_size * 0.15],
+                ),
+            };
+            piston_window::ellipse(eye_color, eye1, con.transform, g);
+            piston_window::ellipse(eye_color, eye2, con.transform, g);
         }
         // Alternate body colors
         let mut is_dark = false;
@@ -149,16 +141,11 @@ impl Snake {
 
     pub fn next_head(&self, dir: Option<Direction>) -> (i32, i32) {
         let (head_x, head_y): (i32, i32) = self.head_position();
-
-        let mut moving_dir = self.direction;
-        match dir {
-            Some(d) => moving_dir = d,
-            None => {}
-        }
+        let moving_dir = dir.unwrap_or(self.direction);
         match moving_dir {
-            Direction::Up => (head_x, head_y + 1),
+            Direction::Up => (head_x, head_y - 1),
             Direction::Down => (head_x, head_y + 1),
-            Direction::Left => (head_x + 1, head_y),
+            Direction::Left => (head_x - 1, head_y),
             Direction::Right => (head_x + 1, head_y),
         }
     }
