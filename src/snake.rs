@@ -54,8 +54,56 @@ impl Snake {
     }
 
     pub fn draw(&self, con: &Context, g: &mut G2d) {
-        for block in &self.body {
-            draw_block(SNAKE_COLOR, block.x, block.y, con, g);
+        let head_color: Color = [0.0, 0.6, 0.0, 1.0];
+        let eye_color: Color = [1.0, 1.0, 1.0, 1.0];
+        let mut iter = self.body.iter();
+        if let Some(head) = iter.next() {
+            draw::draw_block(head_color, head.x, head.y, con, g);
+            // Draw eyes based on direction
+            let (eye_offset_x, eye_offset_y) = match self.direction {
+                Direction::Up => (0.15, 0.2),
+                Direction::Down => (0.15, 0.6),
+                Direction::Left => (0.2, 0.15),
+                Direction::Right => (0.6, 0.15),
+            };
+            let block_size = 25.0;
+            let base_x = draw::to_coord(head.x);
+            let base_y = draw::to_coord(head.y);
+            // Left eye
+            draw::draw_circle(eye_color,
+                head.x,
+                head.y,
+                con,
+                g,
+            );
+            // Right eye (offset)
+            // For simplicity, draw two small circles with offset
+            let eye_radius = block_size * 0.12;
+            let left_eye = [
+                base_x + block_size * eye_offset_x,
+                base_y + block_size * eye_offset_y,
+                eye_radius,
+                eye_radius
+            ];
+            let right_eye = [
+                base_x + block_size * (eye_offset_x + 0.4),
+                base_y + block_size * eye_offset_y,
+                eye_radius,
+                eye_radius
+            ];
+            piston_window::ellipse(eye_color, left_eye, con.transform, g);
+            piston_window::ellipse(eye_color, right_eye, con.transform, g);
+        }
+        // Alternate body colors
+        let mut is_dark = false;
+        for block in iter {
+            let color = if is_dark {
+                [0.0, 0.8, 0.0, 1.0]
+            } else {
+                [0.0, 1.0, 0.0, 1.0]
+            };
+            draw::draw_block(color, block.x, block.y, con, g);
+            is_dark = !is_dark;
         }
     }
 
