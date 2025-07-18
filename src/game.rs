@@ -9,7 +9,7 @@ use crate::draw::{draw_block, draw_rectangle, draw_circle, draw_grid};
 use crate::snake::{Direction, Snake};
 
 const FOOD_COLOR: Color = [0.00, 0.00, 0.00, 1.0];
-const BORDER_COLOR: Color = [0.00, 0.00, 0.00, 1.0];
+const BORDER_COLOR: Color = [0.8, 0.8, 0.8, 0.5];
 const GAMEOVER_COLOR: Color = [0.90, 0.00, 0.00, 0.5];
 
 const MOVING_PERIOD: f64 = 10.0;
@@ -81,10 +81,11 @@ impl Game {
         draw_rectangle(BORDER_COLOR, 0, self.height - 1, self.width, 1, con, g);
         draw_rectangle(BORDER_COLOR, 0, 0, 1, self.height, con, g);
         draw_rectangle(BORDER_COLOR, self.width - 1, 0, 1, self.height, con, g);
-        // Draw score
+        // Draw score above the game area, outside the border
         let score_text = format!("Score: {}", self.score);
-        let transform = con.transform.trans(10.0, 30.0);
-        text([0.0, 0.0, 0.0, 1.0], 24, &score_text, glyphs, transform, g).ok();
+        // Place score above the top border (y = -10)
+        let transform = con.transform.trans(40.0, -10.0);
+        text([1.0, 1.0, 0.2, 1.0], 28, &score_text, glyphs, transform, g).ok();
         if self.game_over {
             draw_rectangle(GAMEOVER_COLOR, 0, 0, self.width, self.height, con, g);
             let game_over_text = "Game Over!";
