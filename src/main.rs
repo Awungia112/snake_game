@@ -20,8 +20,15 @@ fn main() {
         .exit_on_esc(true)
         .build()
         .unwrap();
-        
+    
     let mut game = Game::new(width, height);
+
+    // Load font
+    let assets = find_folder::Search::ParentsThenKids(3, 3)
+        .for_folder("assets")
+        .unwrap();
+    let ref font_path = assets.join("fira-sans.semibold.ttf");
+    let mut glyphs = window.load_font(font_path).unwrap();
 
     while let Some(event) = window.next() {
         if let Some(Button::Keyboard(key)) = event.press_args() {
@@ -30,9 +37,10 @@ fn main() {
         event.update(|arg| {
             game.update(arg.dt);
         });
-        window.draw_2d(&event, |c, g, _| {
+        window.draw_2d(&event, |c, g, device| {
             clear(BACK_COLOR, g);
-            game.draw(&c, g);
+            game.draw(&c, g, &mut glyphs);
+            glyphs.factory.encoder.flush(device);
         });
     }
 }
