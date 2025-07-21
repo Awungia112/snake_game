@@ -27,7 +27,7 @@ fn main() {
     let assets = find_folder::Search::ParentsThenKids(3, 3)
         .for_folder("assets")
         .unwrap();
-    let ref font_path = assets.join("fira-sans.semibold.ttf");
+    let font_path = &assets.join("fira-sans.semibold.ttf");
     let mut glyphs = window.load_font(font_path).unwrap();
 
     while let Some(event) = window.next() {
