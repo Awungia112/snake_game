@@ -45,7 +45,6 @@ pub fn draw_rectangle(
 pub fn draw_circle(color: Color, x: i32, y: i32, con: &Context, g: &mut G2d) {
     let gui_x = to_coord(x);
     let gui_y = to_coord(y);
-    let radius = BLOCK_SIZE * 0.5;
     ellipse(
         color,
         [gui_x, gui_y, BLOCK_SIZE, BLOCK_SIZE],
