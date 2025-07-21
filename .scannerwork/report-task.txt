@@ -1,0 +1,6 @@
+projectKey=snake-game
+serverUrl=http://localhost:9000
+serverVersion=25.7.0.110598
+dashboardUrl=http://localhost:9000/dashboard?id=snake-game
+ceTaskId=53700f72-efff-45cf-a06a-b2e954ba6596
+ceTaskUrl=http://localhost:9000/api/ce/task?id=53700f72-efff-45cf-a06a-b2e954ba6596
