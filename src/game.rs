@@ -5,10 +5,9 @@ use piston_window::*;
 use rand::{rng, Rng};
 use piston_window::{Glyphs, Transformed};
 
-use crate::draw::{draw_block, draw_rectangle, draw_circle, draw_grid};
+use crate::draw::{draw_rectangle, draw_circle, draw_grid};
 use crate::snake::{Direction, Snake};
 
-const FOOD_COLOR: Color = [0.00, 0.00, 0.00, 1.0];
 const BORDER_COLOR: Color = [0.8, 0.8, 0.8, 0.5];
 const GAMEOVER_COLOR: Color = [0.90, 0.00, 0.00, 0.5];
 
