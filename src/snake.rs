@@ -1,11 +1,6 @@
-use piston_window::types::Color;
-use piston_window::{Context, G2d};
 use std::collections::LinkedList;
 
-use crate::draw;
-
 #[derive(Clone, Copy, PartialEq)]
-
 pub enum Direction {
     Up,
     Down,
@@ -29,10 +24,12 @@ struct Block {
     x: i32,
     y: i32,
 }
+
 pub struct Snake {
     direction: Direction,
     body: LinkedList<Block>,
     tail: Option<Block>,
+    next_direction: Option<Direction>,
 }
 
 impl Snake {
@@ -46,53 +43,12 @@ impl Snake {
             direction: Direction::Right,
             body,
             tail: None,
+            next_direction: None,
         }
     }
-
-    pub fn draw(&self, con: &Context, g: &mut G2d) {
-        let head_color: Color = [0.0, 0.6, 0.0, 1.0];
-        let eye_color: Color = [1.0, 1.0, 1.0, 1.0];
-        let mut iter = self.body.iter();
-        if let Some(head) = iter.next() {
-            // Draw head as a rounded rectangle (ellipse for more distinction)
-            let block_size = 25.0;
-            let base_x = draw::to_coord(head.x);
-            let base_y = draw::to_coord(head.y);
-            let head_rect = [base_x, base_y, block_size, block_size];
-            piston_window::ellipse(head_color, head_rect, con.transform, g);
-            // Draw eyes based on direction
-            let (eye1, eye2) = match self.direction {
-                Direction::Up => (
-                    [base_x + block_size * 0.25, base_y + block_size * 0.15, block_size * 0.15, block_size * 0.15],
-                    [base_x + block_size * 0.60, base_y + block_size * 0.15, block_size * 0.15, block_size * 0.15],
-                ),
-                Direction::Down => (
-                    [base_x + block_size * 0.25, base_y + block_size * 0.70, block_size * 0.15, block_size * 0.15],
-                    [base_x + block_size * 0.60, base_y + block_size * 0.70, block_size * 0.15, block_size * 0.15],
-                ),
-                Direction::Left => (
-                    [base_x + block_size * 0.10, base_y + block_size * 0.25, block_size * 0.15, block_size * 0.15],
-                    [base_x + block_size * 0.10, base_y + block_size * 0.60, block_size * 0.15, block_size * 0.15],
-                ),
-                Direction::Right => (
-                    [base_x + block_size * 0.75, base_y + block_size * 0.25, block_size * 0.15, block_size * 0.15],
-                    [base_x + block_size * 0.75, base_y + block_size * 0.60, block_size * 0.15, block_size * 0.15],
-                ),
-            };
-            piston_window::ellipse(eye_color, eye1, con.transform, g);
-            piston_window::ellipse(eye_color, eye2, con.transform, g);
-        }
-        // Alternate body colors
-        let mut is_dark = false;
-        for block in iter {
-            let color = if is_dark {
-                [0.0, 0.8, 0.0, 1.0]
-            } else {
-                [0.0, 1.0, 0.0, 1.0]
-            };
-            draw::draw_block(color, block.x, block.y, con, g);
-            is_dark = !is_dark;
-        }
+    
+    pub fn set_direction(&mut self, dir: Direction) {
+        self.next_direction = Some(dir);
     }
 
     pub fn head_position(&self) -> (i32, i32) {
@@ -101,7 +57,9 @@ impl Snake {
     }
 
     pub fn move_forward(&mut self, dir: Option<Direction>) {
-        if let Some(d) = dir {
+        if let Some(d) = self.next_direction.take() {
+            self.direction = d;
+        } else if let Some(d) = dir {
             self.direction = d;
         }
 
@@ -110,13 +68,12 @@ impl Snake {
         let new_block = match self.direction {
             Direction::Up => Block {
                 x: last_x,
-                y: last_y + 1,
+                y: last_y - 1,
             },
             Direction::Down => Block {
                 x: last_x,
-                y: last_y - 1,
+                y: last_y + 1,
             },
-
             Direction::Right => Block {
                 x: last_x + 1,
                 y: last_y,
@@ -130,6 +87,7 @@ impl Snake {
         let removed_block = self.body.pop_back().unwrap();
         self.tail = Some(removed_block);
     }
+    
     pub fn head_direction(&self) -> Direction {
         self.direction
     }

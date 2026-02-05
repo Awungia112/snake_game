@@ -1,2 +1,18 @@
 /target
 .vercel
+
+# IDE
+.idea/
+.vscode/
+.zencoder/
+.zenflow/
+
+# Build artifacts
+*.exe
+*.pdb
+
+# SonarQube
+.scannerwork/
+
+# Game save data
+.snake_game_save.json
