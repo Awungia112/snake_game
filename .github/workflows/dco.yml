@@ -1,35 +1,40 @@
-name:  DCO Check
+name: Verify Commit Signatures
 
 on:
-  push:
-    branches: ["**"]
   pull_request:
     branches: ["**"]
 
 jobs:
-  dco-check:
-    name:  Verify DCO Sign-off
+  verify-commits:
+    name: Verify Commit Signatures
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Verify commit signatures
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo, number } = context.issue;
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: number,
+            });
 
-      - name: 🔍 Get latest commit message
-        id: get_commit
-        run: |
-          message=$(git log -1 --pretty=format:"%B")
-          echo "commit_msg<<EOF" >> $GITHUB_OUTPUT
-          echo "$message" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+            const { data: commits } = await github.rest.pulls.listCommits({
+              owner,
+              repo,
+              pull_number: number,
+            });
 
-      - name:  Check for Signed-off-by line
-        run: |
-          echo "🔍 Checking commit message:"
-          echo "${{ steps.get_commit.outputs.commit_msg }}"
-          if [[ "${{ steps.get_commit.outputs.commit_msg }}" != *"Signed-off-by:"* ]]; then
-            echo " DCO sign-off missing!"
-            exit 1
-          else
-            echo " DCO sign-off present."
-          fi
+            let unverifiedCommits = [];
+            for (const commit of commits) {
+              if (!commit.commit.verification.verified) {
+                unverifiedCommits.push(`${commit.commit.message.split('\n')[0]} (${commit.sha.substring(0, 7)})`);
+              }
+            }
+
+            if (unverifiedCommits.length > 0) {
+              core.setFailed(`Found ${unverifiedCommits.length} unverified commit(s):\n${unverifiedCommits.join('\n')}`);
+            }
