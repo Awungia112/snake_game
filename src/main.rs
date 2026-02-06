@@ -25,17 +25,18 @@ fn calculate_game_dimensions(term_width: u16, term_height: u16) -> (i32, i32) {
 mod game_logic;
 mod snake;
 mod storage;
-mod terminal_ui;
+mod ui;
 
 use game_logic::{Game, GameDirection};
 use storage::GameData;
-use terminal_ui::{draw_game, draw_menu, draw_pause, draw_game_over};
+use ui::{draw_game, draw_menu, draw_pause, draw_game_over, draw_settings, THEMES};
 
 enum AppState {
     Menu,
     Playing,
     Paused,
     GameOver,
+    Settings,
 }
 
 fn main() -> Result<(), io::Error> {
@@ -72,6 +73,8 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Resu
     let mut app_state = AppState::Menu;
     let mut menu_selected = 0;
     let menu_options = 3;
+    let mut settings_selected = 0;
+    let settings_options = 5; // Theme, Preset, Obstacle, Powerup, Back
     let mut pause_selected = 0;
     let pause_options = 2;
     let mut game_over_selected = 0;
@@ -129,21 +132,25 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Resu
         }
 
         terminal.draw(|f| {
+            let current_theme = &THEMES[game.theme_index];
             match app_state {
                 AppState::Menu => {
-                    draw_menu(f, menu_selected, game.high_score(), game.difficulty());
+                    draw_menu(f, menu_selected, game.high_score(), game.difficulty(), current_theme);
                 }
                 AppState::Playing => {
                     draw_game(f, &game);
                 }
                 AppState::Paused => {
                     draw_game(f, &game);
-                    draw_pause(f, game.difficulty(), pause_selected);
+                    draw_pause(f, game.difficulty(), pause_selected, current_theme);
                 }
                 AppState::GameOver => {
                     draw_game(f, &game);
                     let is_new_high = game.score() == game.high_score() && game.score() > 0;
-                    draw_game_over(f, game.score(), game.high_score(), is_new_high, game_over_selected);
+                    draw_game_over(f, game.score(), game.high_score(), is_new_high, game_over_selected, current_theme);
+                }
+                AppState::Settings => {
+                    draw_settings(f, &game, settings_selected, current_theme);
                 }
             }
         })?;
@@ -158,6 +165,9 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Resu
                             KeyCode::Char('q') | KeyCode::Char('Q') => break,
                             KeyCode::Char('t') | KeyCode::Char('T') => {
                                 game.change_difficulty();
+                            }
+                            KeyCode::Char('h') | KeyCode::Char('H') => {
+                                game.cycle_theme();
                             }
                             KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('W') => {
                                 if menu_selected > 0 {
@@ -178,9 +188,12 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Resu
                                         app_state = AppState::Playing;
                                     }
                                     1 => {
+                                        app_state = AppState::Settings;
+                                    }
+                                    2 => {
                                         // TODO: Show instructions
                                     }
-                                    2 => break,
+                                    3 => break,
                                     _ => {}
                                 }
                             }
@@ -216,6 +229,12 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Resu
                             KeyCode::Right | KeyCode::Char('d') | KeyCode::Char('D') => {
                                 game.handle_direction(GameDirection::Right);
                             }
+                            KeyCode::Char('h') | KeyCode::Char('H') => {
+                                game.cycle_theme();
+                            }
+                            KeyCode::Char('o') | KeyCode::Char('O') => {
+                                game.adjust_spawn_rates();
+                            }
                             _ => {}
                         }
 
@@ -225,6 +244,15 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Resu
                     }
                     AppState::Paused => {
                         match key.code {
+                            KeyCode::Char('h') | KeyCode::Char('H') => {
+                                game.cycle_theme();
+                            }
+                            KeyCode::Char('o') | KeyCode::Char('O') => {
+                                game.adjust_spawn_rates();
+                            }
+                            KeyCode::Char('t') | KeyCode::Char('T') => {
+                                game.cycle_theme();
+                            }
                             KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('W') => {
                                 if pause_selected > 0 {
                                     pause_selected -= 1;
@@ -244,6 +272,47 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Resu
                             }
                             KeyCode::Char('p') | KeyCode::Char('P') => {
                                 app_state = AppState::Playing;
+                            }
+                            KeyCode::Char('q') | KeyCode::Char('Q') => {
+                                app_state = AppState::Menu;
+                            }
+                            _ => {}
+                        }
+                    }
+                    AppState::Settings => {
+                        match key.code {
+                            KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('W') => {
+                                if settings_selected > 0 {
+                                    settings_selected -= 1;
+                                }
+                            }
+                            KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('S') => {
+                                if settings_selected < settings_options - 1 {
+                                    settings_selected += 1;
+                                }
+                            }
+                            KeyCode::Left | KeyCode::Char('a') | KeyCode::Char('A') => {
+                                match settings_selected {
+                                    0 => game.cycle_theme(), // Theme (cycles backward, but we'll use same function)
+                                    2 => game.decrease_obstacle_interval(),
+                                    3 => game.decrease_powerup_interval(),
+                                    _ => {}
+                                }
+                            }
+                            KeyCode::Right | KeyCode::Char('d') | KeyCode::Char('D') => {
+                                match settings_selected {
+                                    0 => game.cycle_theme(), // Theme
+                                    2 => game.increase_obstacle_interval(),
+                                    3 => game.increase_powerup_interval(),
+                                    _ => {}
+                                }
+                            }
+                            KeyCode::Enter | KeyCode::Char('o') | KeyCode::Char('O') => {
+                                if settings_selected == 1 {
+                                    game.adjust_spawn_rates(); // Preset
+                                } else if settings_selected == 4 {
+                                    app_state = AppState::Menu; // Back
+                                }
                             }
                             KeyCode::Char('q') | KeyCode::Char('Q') => {
                                 app_state = AppState::Menu;
