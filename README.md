@@ -8,7 +8,10 @@ A modern terminal-based implementation of the classic Snake game, written in Rus
 
 ## Features
 
-- **Dynamic terminal resizing** - Game adapts to terminal size changes
+- **Local 2-Player Split-Screen** - Compete with a friend on the same screen
+- **Custom Themes** - Choose from multiple snake themes
+- **Powerups & Obstacles** - Dynamic gameplay elements
+- **Dynamic terminal resizing** - Game adapts to terminal size changes (including split-screen)
 - **Multiple difficulty levels** - Easy, Medium, and Hard modes
 - **Combo system** - Chain food pickups for bonus points
 - **Persistent high scores** - Tracks your best performance
@@ -42,11 +45,18 @@ cargo run --release
 - `T` - Change difficulty
 - `Q` - Quit
 
-**In-Game:**
+**In-Game (Single Player):**
 - `↑/↓/←/→` or `WASD` - Move snake
 - `P` - Pause
 - `R` - Restart
 - `Q` - Return to menu
+
+**In-Game (2-Player Mode):**
+- **Player 1:** `Arrow Keys` - Move
+- **Player 2:** `WASD` - Move
+- `P` - Pause both games
+- `R` - Rematch (on Game Over)
+- `Q` - Quit to menu
 
 **Pause Menu:**
 - `P` - Resume
