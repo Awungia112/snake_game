@@ -1,18 +1,12 @@
-// Game Module
-// Core game logic and state management
-// TODO: Split game_logic.rs into submodules
+// Game module - core game logic and entities
+pub mod entities;
+pub mod settings;
 
-// For now, re-export from game_logic until we complete the migration
-pub use crate::game_logic::{
-    Game, GameSettings, Obstacle, Powerup, PowerupType, CellType
-};
-pub use crate::storage::Difficulty;
+// Re-export from game_logic
+pub use crate::game_logic::{Game, GameDirection};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GameDirection {
-    Up,
-    Down,
-    Left,
-    Right,
-}
+// Re-export entities
+pub use entities::{Obstacle, Powerup, PowerupType, CellType, ActiveEffects};
 
+// Re-export settings
+pub use settings::GameSettings;

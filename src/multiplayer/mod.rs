@@ -1,10 +1,6 @@
-// Multiplayer Module
-// Local and network multiplayer support
-// TODO: Implement multiplayer functionality
+// Multiplayer module - 2-player game state and input handling
+pub mod game_state;
+pub mod input;
 
-// Placeholder types for future implementation
-pub struct LocalMultiplayerGame;
-pub struct PlayerManager;
-pub struct InputRouter;
-pub struct PlayerInput;
-
+pub use game_state::{MultiplayerGame, PlayerNumber};
+pub use input::{PlayerInput, parse_multiplayer_input};

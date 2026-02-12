@@ -13,13 +13,11 @@ use crate::game_logic::{CellType, Game, PowerupType};
 use crate::storage::Difficulty;
 use super::themes::{Theme, THEMES, COLOR_SCORE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY};
 
-pub fn draw_game(frame: &mut Frame, game: &Game) {
+pub fn draw_game(frame: &mut Frame, game: &Game, area: Rect) {
     let current_theme = &THEMES[game.theme_index];
     
-    let size = frame.size();
-    
     // Background
-    frame.render_widget(Block::default().style(Style::default().bg(current_theme.bg)), size);
+    frame.render_widget(Block::default().style(Style::default().bg(current_theme.bg)), area);
     
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -28,7 +26,7 @@ pub fn draw_game(frame: &mut Frame, game: &Game) {
             Constraint::Min(0),    // Game Area
             Constraint::Length(3), // Footer
         ])
-        .split(size);
+        .split(area);
 
     draw_header(frame, chunks[0], game, current_theme);
     draw_game_area(frame, chunks[1], game, current_theme);

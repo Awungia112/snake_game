@@ -9,6 +9,6 @@ pub mod storage;
 pub mod ui;
 
 // Re-export commonly used types
-pub use game_logic::{Game, GameDirection};
+pub use game_logic::Game;
 pub use storage::{GameData, Difficulty};
 

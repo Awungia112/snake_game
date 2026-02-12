@@ -59,7 +59,7 @@ pub fn draw_menu(f: &mut Frame, selected: usize, high_score: u32, difficulty: &D
     f.render_widget(title_widget, title_area);
     
     // Menu options
-    let options = ["▶ Start Game", "  Settings", "  Quit"];
+    let options = ["▶ Start Game", "  2-Player Mode", "  Settings", "  Quit"];
     let mut menu_lines = vec![];
     
     for (i, option) in options.iter().enumerate() {

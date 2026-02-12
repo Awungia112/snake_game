@@ -1,14 +1,18 @@
-// UI Module
-// Handles all terminal UI rendering
-
+// UI Module - all rendering logic
+pub mod themes;
 pub mod components;
 pub mod game_view;
 pub mod menu_view;
 pub mod settings_view;
-pub mod themes;
+pub mod multiplayer_view;
 
-// Re-export main drawing functions
-pub use game_view::draw_game;
-pub use menu_view::{draw_game_over, draw_menu, draw_pause};
-pub use settings_view::draw_settings;
 pub use themes::THEMES;
+pub use game_view::draw_game;
+pub use menu_view::{draw_menu, draw_pause, draw_game_over};
+pub use settings_view::draw_settings;
+pub use multiplayer_view::{
+    draw_multiplayer_setup,
+    draw_multiplayer_game,
+    draw_multiplayer_pause,
+    draw_multiplayer_game_over,
+};

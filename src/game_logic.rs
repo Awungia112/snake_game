@@ -3,6 +3,14 @@ use crate::snake::{Direction, Snake};
 use crate::storage::{GameData, Difficulty};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
 pub struct Game {
     snake: Snake,
     food_exists: bool,
@@ -192,6 +200,20 @@ impl Game {
         self.theme_index = (self.theme_index + 1) % crate::ui::THEMES.len();
         self.game_data.theme_index = self.theme_index;
         self.game_data.save();
+    }
+    
+    pub fn change_direction(&mut self, direction: GameDirection) {
+        let new_dir = match direction {
+            GameDirection::Up => Direction::Up,
+            GameDirection::Down => Direction::Down,
+            GameDirection::Left => Direction::Left,
+            GameDirection::Right => Direction::Right,
+        };
+        self.snake.set_direction(new_dir);
+    }
+    
+    pub fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
     }
     
     pub fn adjust_spawn_rates(&mut self) {
@@ -506,7 +528,7 @@ impl Game {
             let x = rng.random_range(0..self.width);
             let y = rng.random_range(0..self.height);
             if !self.is_pos_occupied(x, y) {
-                 return (x, y);
+                return (x, y);
             }
         }
         // Fallback: Just return a random pos if we can't find a free one quickly
@@ -659,11 +681,4 @@ pub enum CellType {
     Obstacle,
     PowerupGhost,
     PowerupMultiplier,
-}
-
-pub enum GameDirection {
-    Up,
-    Down,
-    Left,
-    Right,
 }
