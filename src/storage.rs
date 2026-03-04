@@ -6,6 +6,9 @@ use std::path::PathBuf;
 pub struct GameData {
     pub high_score: u32,
     pub difficulty: Difficulty,
+    pub theme_index: usize,
+    pub obstacle_interval: f64,
+    pub powerup_interval: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -46,6 +49,9 @@ impl Default for GameData {
         GameData {
             high_score: 0,
             difficulty: Difficulty::Medium,
+            theme_index: 0,
+            obstacle_interval: 5.0,
+            powerup_interval: 10.0,
         }
     }
 }

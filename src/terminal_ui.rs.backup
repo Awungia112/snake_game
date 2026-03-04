@@ -1,0 +1,607 @@
+use ratatui::{
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, BorderType, Paragraph, Clear},
+    Frame,
+};
+use crate::game_logic::{Game, CellType};
+use crate::storage::Difficulty;
+
+// Theme Definitions
+pub struct Theme {
+    pub name: &'static str,
+    pub bg: Color,
+    pub border: Color,
+    pub snake_head: Color,
+    pub snake_body: Color,
+    pub food: Color,
+    pub obstacle: Color,
+    pub ghost: Color,
+    pub multiplier: Color,
+    pub combo: Color,
+}
+
+pub const THEMES: &[Theme] = &[
+    // Classic
+    Theme {
+        name: "Classic",
+        bg: Color::Reset,
+        border: Color::White,
+        snake_head: Color::Green,
+        snake_body: Color::LightGreen,
+        food: Color::Red,
+        obstacle: Color::DarkGray,
+        ghost: Color::Cyan,
+        multiplier: Color::Magenta,
+        combo: Color::Yellow,
+    },
+    // Dark Mode
+    Theme {
+        name: "Dark",
+        bg: Color::Black,
+        border: Color::Gray,
+        snake_head: Color::Blue,
+        snake_body: Color::LightBlue,
+        food: Color::LightRed,
+        obstacle: Color::White,
+        ghost: Color::LightCyan,
+        multiplier: Color::LightMagenta,
+        combo: Color::Rgb(255, 215, 0), // Gold color
+    },
+    // Retro (Matrix-ish)
+    Theme {
+        name: "Retro",
+        bg: Color::Black,
+        border: Color::Green,
+        snake_head: Color::LightGreen,
+        snake_body: Color::Green,
+        food: Color::Green, // Everything is green!
+        obstacle: Color::DarkGray,
+        ghost: Color::White,
+        multiplier: Color::LightYellow,
+        combo: Color::White,
+    },
+    // Neon
+    Theme {
+        name: "Neon",
+        bg: Color::Black,
+        border: Color::Cyan,
+        snake_head: Color::LightMagenta,
+        snake_body: Color::Magenta,
+        food: Color::LightYellow,
+        obstacle: Color::Blue,
+        ghost: Color::White,
+        multiplier: Color::Red,
+        combo: Color::LightCyan,
+    },
+];
+
+// Modern color palette (retained for elements not in Theme struct)
+const COLOR_SCORE: Color = Color::Rgb(242, 199, 89);
+const COLOR_TEXT_PRIMARY: Color = Color::Rgb(242, 245, 247);
+const COLOR_TEXT_SECONDARY: Color = Color::Rgb(179, 186, 194);
+
+pub fn draw_game(frame: &mut Frame, game: &Game) {
+    let current_theme = &THEMES[game.theme_index];
+    
+    let size = frame.size();
+    
+    // Background
+    frame.render_widget(Block::default().style(Style::default().bg(current_theme.bg)), size);
+    
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Header
+            Constraint::Min(0),    // Game Area
+        ])
+        .split(size);
+
+    draw_header(frame, chunks[0], game, current_theme);
+    draw_game_area(frame, chunks[1], game, current_theme);
+    
+    // Note: Popups like Game Over and Pause are handled by main.rs calling specific draw functions
+    // But for simpler overlays/alerts we might use draw_popup
+}
+
+pub fn draw_popup(f: &mut Frame, size: Rect, title: &str, lines: Vec<&str>, border_color: Color) {
+    let panel_width = 40;
+    let panel_height = lines.len() as u16 + 4;
+    let panel_area = Rect {
+        x: (size.width.saturating_sub(panel_width)) / 2,
+        y: (size.height.saturating_sub(panel_height)) / 2,
+        width: panel_width,
+        height: panel_height,
+    };
+    
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(border_color))
+        .title(title)
+        .style(Style::default().bg(Color::Reset)); // Or theme bg? Popup usually stands out
+    
+    let inner = block.inner(panel_area);
+    f.render_widget(Clear, panel_area);
+    f.render_widget(block, panel_area);
+    
+    let text_lines: Vec<Line> = lines.iter().map(|s| Line::from(*s)).collect();
+    let widget = Paragraph::new(text_lines).alignment(Alignment::Center);
+    f.render_widget(widget, inner);
+}
+
+fn draw_header(f: &mut Frame, area: Rect, game: &Game, theme: &Theme) {
+    let header_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(33),
+            Constraint::Percentage(34),
+            Constraint::Percentage(33),
+        ])
+        .split(area);
+    
+    // Score
+    let score_text = format!("Score: {}", game.score());
+    let score = Paragraph::new(score_text)
+        .style(Style::default().fg(COLOR_SCORE).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Left)
+        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme.border)));
+    f.render_widget(score, header_chunks[0]);
+    
+    // Status / Title
+    let mut status_text = String::from("🐍 SNAKE");
+    
+    // Append active effects
+    if let Some(&duration) = game.active_effects().get(&crate::game_logic::PowerupType::Ghost) {
+        status_text.push_str(&format!(" | GHOST: {:.1}s", duration));
+    }
+    if let Some(&duration) = game.active_effects().get(&crate::game_logic::PowerupType::Multiplier) {
+        status_text.push_str(&format!(" | 2X: {:.1}s", duration));
+    }
+
+    let title = Paragraph::new(status_text)
+        .style(Style::default().fg(theme.border).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme.border)));
+    f.render_widget(title, header_chunks[1]);
+    
+    // High Score
+    let high_score_text = format!("Best: {}", game.high_score());
+    let high_score = Paragraph::new(high_score_text)
+        .style(Style::default().fg(COLOR_SCORE).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Right)
+        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme.border)));
+    f.render_widget(high_score, header_chunks[2]);
+}
+
+fn draw_game_area(f: &mut Frame, area: Rect, game: &Game, theme: &Theme) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.bg));
+    
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+    
+    // Draw game content - use full available area, no centering
+    let game_width = game.width() as u16;
+    let game_height = game.height() as u16;
+    
+    // Use the full inner area without centering offset
+    // Each cell is 2 characters wide for consistent horizontal/vertical movement speed
+    let game_area = Rect {
+        x: inner.x,
+        y: inner.y,
+        width: (game_width * 2).min(inner.width),
+        height: game_height.min(inner.height),
+    };
+    
+    // Draw snake and food with better visuals
+    let mut lines = vec![];
+    for y in 0..game_height.min(inner.height) {
+        let mut line_spans = vec![];
+        for x in 0..game_width {
+            let cell = game.get_cell(x as i32, y as i32);
+                let (symbol, color) = match cell {
+                    CellType::Empty => ("  ", theme.bg),
+                    CellType::SnakeHead => {
+                        let mut color = if game.combo() > 1 { theme.combo } else { theme.snake_head };
+                        if game.is_ghost_active() { color = theme.ghost; }
+                        ("◉ ", color)
+                    },
+                    CellType::SnakeBody => {
+                        let mut color = if game.combo() > 1 { theme.combo } else { theme.snake_body };
+                        if game.is_ghost_active() { color = theme.ghost; }
+                        ("▪ ", color)
+                    },
+                    CellType::Food => ("🍎", theme.food),
+                    CellType::Obstacle => ("▓▓", theme.obstacle),
+                    CellType::PowerupGhost => ("👻", theme.ghost),
+                    CellType::PowerupMultiplier => ("2x", theme.multiplier),
+                };
+            line_spans.push(Span::styled(symbol, Style::default().fg(color).bg(theme.bg)));
+        }
+        lines.push(Line::from(line_spans));
+    }
+    
+    let game_content = Paragraph::new(lines);
+    f.render_widget(game_content, game_area);
+    
+    // Draw combo if active
+    if game.combo() > 1 {
+        let combo_text = format!("x{} COMBO!", game.combo());
+        let combo_widget = Paragraph::new(combo_text)
+            .style(Style::default().fg(COLOR_SCORE).add_modifier(Modifier::BOLD))
+            .alignment(Alignment::Center);
+        
+        let combo_area = Rect {
+            x: inner.x + inner.width / 4,
+            y: inner.y + 2,
+            width: inner.width / 2,
+            height: 1,
+        };
+        f.render_widget(combo_widget, combo_area);
+    }
+    
+    // Draw score popup if active
+    if let Some((points, time)) = game.score_popup() {
+        if time > 0.0 {
+            let popup_text = format!("+{}", points);
+            let alpha = (time / 1.0 * 255.0) as u8;
+            let popup_color = Color::Rgb(242, 199, alpha);
+            let popup_widget = Paragraph::new(popup_text)
+                .style(Style::default().fg(popup_color).add_modifier(Modifier::BOLD))
+                .alignment(Alignment::Center);
+            
+            let popup_area = Rect {
+                x: inner.x + inner.width / 3,
+                y: inner.y + 4,
+                width: inner.width / 3,
+                height: 1,
+            };
+            f.render_widget(popup_widget, popup_area);
+        }
+    }
+    
+    // Draw collision head if game over (to show snake hitting the wall)
+    if game.is_game_over() {
+        let (head_x, head_y) = game.head_position();
+        let width = game.width();
+        let height = game.height();
+        
+        let should_draw_crash = head_x < 0 || head_x >= width || head_y < 0 || head_y >= height;
+        
+        if should_draw_crash {
+             // Calculate screen position relative to inner area
+             // Game Grid (0,0) is at inner.x, inner.y
+             let screen_x = inner.x as i32 + head_x * 2;
+             let screen_y = inner.y as i32 + head_y;
+             
+             // Check against the actual terminal buffer size to prevent panics
+             // x + 1 because the character is 2 units wide (needs safe width of 2)
+             let term_width = f.size().width as i32;
+             let term_height = f.size().height as i32;
+             
+             if screen_x >= 0 && screen_y >= 0 && screen_x + 1 < term_width && screen_y < term_height {
+                 let crash_area = Rect {
+                     x: screen_x as u16,
+                     y: screen_y as u16,
+                     width: 2,
+                     height: 1,
+                 };
+                 
+                 let crash_color = Color::Red; 
+                 let crash_head = Paragraph::new("X ") 
+                    .style(Style::default().fg(crash_color).bg(theme.bg).add_modifier(Modifier::BOLD));
+                    
+                 f.render_widget(crash_head, crash_area);
+             }
+        }
+    }
+}
+
+fn draw_footer(f: &mut Frame, area: Rect, game: &Game, theme: &Theme) {
+    let diff_color = match game.difficulty() {
+        Difficulty::Easy => Color::Green,
+        Difficulty::Medium => COLOR_SCORE,
+        Difficulty::Hard => Color::Red,
+    };
+    
+    let mins = (game.play_time() / 60.0) as u32;
+    let secs = (game.play_time() % 60.0) as u32;
+    
+    let footer_text = vec![
+        Span::styled("↑↓←→/WASD", Style::default().fg(COLOR_TEXT_PRIMARY).add_modifier(Modifier::BOLD)),
+        Span::raw(" | "),
+        Span::styled("P", Style::default().fg(COLOR_TEXT_PRIMARY).add_modifier(Modifier::BOLD)),
+        Span::styled(" Pause", Style::default().fg(COLOR_TEXT_SECONDARY)),
+        Span::raw(" | "),
+        Span::styled("Q", Style::default().fg(COLOR_TEXT_PRIMARY).add_modifier(Modifier::BOLD)),
+        Span::styled(" Quit", Style::default().fg(COLOR_TEXT_SECONDARY)),
+        Span::raw(" | "),
+        Span::styled(format!("{}", game.difficulty().name()), Style::default().fg(diff_color).add_modifier(Modifier::BOLD)),
+        Span::raw(" | "),
+        Span::styled(format!("🍎{}", game.food_eaten()), Style::default().fg(theme.food)),
+        Span::raw(" | "),
+        Span::styled(format!("⏱ {}:{:02}", mins, secs), Style::default().fg(COLOR_TEXT_SECONDARY)),
+    ];
+    
+    let footer = Paragraph::new(Line::from(footer_text))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme.border)));
+    
+    f.render_widget(footer, area);
+}
+
+
+pub fn draw_menu(f: &mut Frame, selected: usize, high_score: u32, difficulty: &Difficulty, theme: &Theme) {
+    let size = f.size();
+    
+    // Center panel
+    let panel_width = 50;
+    let panel_height = 20;
+    let panel_area = Rect {
+        x: (size.width.saturating_sub(panel_width)) / 2,
+        y: (size.height.saturating_sub(panel_height)) / 2,
+        width: panel_width,
+        height: panel_height,
+    };
+    
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.bg));
+    
+    let inner = block.inner(panel_area);
+    f.render_widget(Clear, panel_area);
+    f.render_widget(block, panel_area);
+    
+    // Title
+    let title_lines = vec![
+        Line::from(Span::styled("🐍 SNAKE", Style::default().fg(theme.border).add_modifier(Modifier::BOLD))),
+        Line::from(Span::styled("Rust Edition", Style::default().fg(COLOR_TEXT_SECONDARY))),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("★ Best: ", Style::default().fg(COLOR_TEXT_SECONDARY)),
+            Span::styled(format!("{}", high_score), Style::default().fg(theme.combo).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(vec![
+            Span::styled("Difficulty: ", Style::default().fg(COLOR_TEXT_SECONDARY)),
+            Span::styled(difficulty.name(), Style::default().fg(theme.snake_head)),
+        ]),
+        Line::from(vec![
+             Span::styled("Theme: ", Style::default().fg(COLOR_TEXT_SECONDARY)),
+             Span::styled(theme.name, Style::default().fg(theme.multiplier)),
+        ]),
+        Line::from(""),
+    ];
+    
+    let title_widget = Paragraph::new(title_lines).alignment(Alignment::Center);
+    let title_area = Rect { x: inner.x, y: inner.y, width: inner.width, height: 8 };
+    f.render_widget(title_widget, title_area);
+    
+    // Menu options
+    let options = ["▶ Start Game", "  Settings", "  Quit"];
+    let mut menu_lines = vec![];
+    
+    for (i, option) in options.iter().enumerate() {
+        let style = if i == selected {
+            Style::default().fg(theme.border).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(COLOR_TEXT_SECONDARY)
+        };
+        menu_lines.push(Line::from(Span::styled(*option, style)));
+        menu_lines.push(Line::from(""));
+    }
+    
+    let menu_widget = Paragraph::new(menu_lines).alignment(Alignment::Center);
+    let menu_area = Rect { x: inner.x, y: inner.y + 9, width: inner.width, height: 8 };
+    f.render_widget(menu_widget, menu_area);
+    
+    // Footer
+    let footer_text = "↑↓ Nav • Enter • T Diff • H Theme • Q Quit";
+    let footer = Paragraph::new(footer_text)
+        .style(Style::default().fg(COLOR_TEXT_SECONDARY))
+        .alignment(Alignment::Center);
+    let footer_area = Rect { x: inner.x, y: inner.y + inner.height - 2, width: inner.width, height: 1 };
+    f.render_widget(footer, footer_area);
+}
+
+pub fn draw_pause(f: &mut Frame, _difficulty: &Difficulty, selected: usize, theme: &Theme) {
+    let size = f.size();
+    
+    // Pause overlay logic... simplified for brevity but needs theming
+    let panel_width = 40;
+    let panel_height = 10;
+    let panel_area = Rect {
+        x: (size.width.saturating_sub(panel_width)) / 2,
+        y: (size.height.saturating_sub(panel_height)) / 2,
+        width: panel_width,
+        height: panel_height,
+    };
+    
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.bg));
+    
+    let inner = block.inner(panel_area);
+    f.render_widget(Clear, panel_area);
+    f.render_widget(block, panel_area);
+    
+    let options = [
+        ("P - Resume", "Resume"),
+        ("Q - Quit to Menu", "Quit to Menu"),
+    ];
+    
+    let mut lines = vec![
+        Line::from(Span::styled("⏸  PAUSED", Style::default().fg(theme.border).add_modifier(Modifier::BOLD))),
+        Line::from(""),
+    ];
+    
+    for (i, (text, _)) in options.iter().enumerate() {
+        let style = if i == selected {
+            Style::default().fg(theme.border).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(COLOR_TEXT_SECONDARY)
+        };
+        let prefix = if i == selected { "▶ " } else { "  " };
+        lines.push(Line::from(Span::styled(format!("{}{}", prefix, text), style)));
+    }
+    
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(format!("Theme: {} (T)", theme.name), Style::default().fg(theme.snake_head))));
+    
+    let widget = Paragraph::new(lines).alignment(Alignment::Center);
+    f.render_widget(widget, inner);
+}
+
+pub fn draw_game_over(f: &mut Frame, score: u32, high_score: u32, is_new_high: bool, selected: usize, theme: &Theme) {
+    let size = f.size();
+    
+    let panel_width = 45;
+    let panel_height = 14;
+    let panel_area = Rect {
+        x: (size.width.saturating_sub(panel_width)) / 2,
+        y: (size.height.saturating_sub(panel_height)) / 2,
+        width: panel_width,
+        height: panel_height,
+    };
+    
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Red))
+        .style(Style::default().bg(theme.bg));
+    
+    let inner = block.inner(panel_area);
+    f.render_widget(Clear, panel_area);
+    f.render_widget(block, panel_area);
+    
+    let mut lines = vec![
+        Line::from(Span::styled("GAME OVER", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))),
+        Line::from(""),
+    ];
+    
+    if is_new_high {
+        lines.push(Line::from(Span::styled("★ NEW RECORD! ★", Style::default().fg(theme.combo).add_modifier(Modifier::BOLD))));
+        lines.push(Line::from(""));
+    }
+    
+    lines.push(Line::from(vec![
+        Span::styled("Score: ", Style::default().fg(COLOR_TEXT_SECONDARY)),
+        Span::styled(format!("{}", score), Style::default().fg(theme.snake_head).add_modifier(Modifier::BOLD)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Best: ", Style::default().fg(COLOR_TEXT_SECONDARY)),
+        Span::styled(format!("{}", high_score), Style::default().fg(theme.border).add_modifier(Modifier::BOLD)),
+    ]));
+    lines.push(Line::from(""));
+    
+    let options = ["R - Restart", "Q - Quit to Menu"];
+    for (i, option) in options.iter().enumerate() {
+        let style = if i == selected {
+            Style::default().fg(theme.border).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(COLOR_TEXT_SECONDARY)
+        };
+        let prefix = if i == selected { "▶ " } else { "  " };
+        lines.push(Line::from(Span::styled(format!("{}{}", prefix, option), style)));
+    }
+    
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled("↑↓ Navigate  •  Enter Select", Style::default().fg(COLOR_TEXT_SECONDARY))));
+    
+    let widget = Paragraph::new(lines).alignment(Alignment::Center);
+    f.render_widget(widget, inner);
+}
+
+pub fn draw_settings(f: &mut Frame, game: &Game, selected: usize, theme: &Theme) {
+    let size = f.size();
+    
+    let panel_width = 60;
+    let panel_height = 18;
+    let panel_area = Rect {
+        x: (size.width.saturating_sub(panel_width)) / 2,
+        y: (size.height.saturating_sub(panel_height)) / 2,
+        width: panel_width,
+        height: panel_height,
+    };
+    
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.bg));
+    
+    let inner = block.inner(panel_area);
+    f.render_widget(Clear, panel_area);
+    f.render_widget(block, panel_area);
+    
+    let mut lines = vec![
+        Line::from(Span::styled("⚙  SPAWN SETTINGS", Style::default().fg(theme.border).add_modifier(Modifier::BOLD))),
+        Line::from(""),
+    ];
+    
+    // Preset
+    let preset_name = game.get_spawn_preset_name();
+    let preset_style = if selected == 0 {
+        Style::default().fg(theme.border).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(COLOR_TEXT_SECONDARY)
+    };
+    let prefix = if selected == 0 { "▶ " } else { "  " };
+    lines.push(Line::from(Span::styled(
+        format!("{}Preset: {}", prefix, preset_name),
+        preset_style
+    )));
+    
+    lines.push(Line::from(""));
+    
+    // Obstacle Interval
+    let obs_style = if selected == 1 {
+        Style::default().fg(theme.border).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(COLOR_TEXT_SECONDARY)
+    };
+    let prefix = if selected == 1 { "▶ " } else { "  " };
+    lines.push(Line::from(Span::styled(
+        format!("{}Obstacle Spawn: {:.1}s (←/→)", prefix, game.settings.obstacle_interval),
+        obs_style
+    )));
+    
+    // Powerup Interval
+    let pow_style = if selected == 2 {
+        Style::default().fg(theme.border).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(COLOR_TEXT_SECONDARY)
+    };
+    let prefix = if selected == 2 { "▶ " } else { "  " };
+    lines.push(Line::from(Span::styled(
+        format!("{}Powerup Spawn: {:.1}s (←/→)", prefix, game.settings.powerup_interval),
+        pow_style
+    )));
+    
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled("0s = Disabled", Style::default().fg(COLOR_TEXT_SECONDARY))));
+    lines.push(Line::from(""));
+    
+    // Back button
+    let back_style = if selected == 3 {
+        Style::default().fg(theme.border).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(COLOR_TEXT_SECONDARY)
+    };
+    let prefix = if selected == 3 { "▶ " } else { "  " };
+    lines.push(Line::from(Span::styled(format!("{}Back to Menu", prefix), back_style)));
+    
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled("↑↓ Nav  •  ←→ Adjust  •  Enter/O Preset  •  Q Back", Style::default().fg(COLOR_TEXT_SECONDARY))));
+    
+    let widget = Paragraph::new(lines).alignment(Alignment::Center);
+    f.render_widget(widget, inner);
+}

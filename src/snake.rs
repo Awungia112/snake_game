@@ -92,16 +92,7 @@ impl Snake {
         self.direction
     }
 
-    pub fn next_head(&self, dir: Option<Direction>) -> (i32, i32) {
-        let (head_x, head_y): (i32, i32) = self.head_position();
-        let moving_dir = dir.unwrap_or(self.direction);
-        match moving_dir {
-            Direction::Up => (head_x, head_y - 1),
-            Direction::Down => (head_x, head_y + 1),
-            Direction::Left => (head_x - 1, head_y),
-            Direction::Right => (head_x + 1, head_y),
-        }
-    }
+
 
     pub fn restore_tail(&mut self) {
         let blk = self.tail.clone().unwrap();
@@ -117,6 +108,22 @@ impl Snake {
             ch += 1;
             if ch == self.body.len() + 1 {
                 break;
+            }
+        }
+        false
+    }
+
+    pub fn has_self_collision(&self) -> bool {
+        let (head_x, head_y) = self.head_position();
+        let mut skipped_head = false;
+        
+        for block in &self.body {
+            if !skipped_head {
+                skipped_head = true;
+                continue;
+            }
+            if head_x == block.x && head_y == block.y {
+                return true;
             }
         }
         false
